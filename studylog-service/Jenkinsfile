@@ -2,8 +2,9 @@ pipeline {
     agent any
 
     environment {
-        REGISTRY = 'your-docker-registry'
-        IMAGE_NAME = 'student-service' // Change to 'studylog-service' for second pipeline
+        REGISTRY = 'ghcr.io/saipappala'
+        SERVICE_DIR = 'studylog-service' // Change to 'studylog-service' for the second pipeline
+        IMAGE_NAME = "${SERVICE_DIR}"
         TAG = "${BUILD_NUMBER}"
     }
 
@@ -16,21 +17,24 @@ pipeline {
 
         stage('Compile & Test') {
             steps {
-                sh './mvnw clean test'
+                // Change directory to the service folder before running Maven
+                dir("${SERVICE_DIR}") {
+                    sh './mvnw clean test'
+                }
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                sh "docker build -t ${REGISTRY}/${IMAGE_NAME}:${TAG} ."
-                sh "docker tag ${REGISTRY}/${IMAGE_NAME}:${TAG} ${REGISTRY}/${IMAGE_NAME}:latest"
+                // Point docker build directly to the Dockerfile and context path inside the service folder
+                sh "docker build -t ${REGISTRY}/${IMAGE_NAME}:${TAG} -t ${REGISTRY}/${IMAGE_NAME}:latest ./${SERVICE_DIR}"
             }
         }
 
         stage('Push Image to Registry') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
-                    sh "docker login -u ${USER} -p ${PASS}"
+                withCredentials([usernamePassword(credentialsId: 'github-container-registry-credentials', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
+                    sh "echo ${PASS} | docker login ghcr.io -u ${USER} --password-stdin"
                     sh "docker push ${REGISTRY}/${IMAGE_NAME}:${TAG}"
                     sh "docker push ${REGISTRY}/${IMAGE_NAME}:latest"
                 }

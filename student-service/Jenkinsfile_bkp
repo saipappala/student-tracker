@@ -1,0 +1,46 @@
+pipeline {
+    agent any
+
+    environment {
+        REGISTRY = 'ghcr.io/saipappala'
+        IMAGE_NAME = 'student-service' // Change to 'studylog-service' for second pipeline
+        TAG = "${BUILD_NUMBER}"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Compile & Test') {
+            steps {
+                sh './mvnw clean test'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                sh "docker build -t ${REGISTRY}/${IMAGE_NAME}:${TAG} ."
+                sh "docker tag ${REGISTRY}/${IMAGE_NAME}:${TAG} ${REGISTRY}/${IMAGE_NAME}:latest"
+            }
+        }
+
+        stage('Push Image to Registry') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
+                    sh "docker login -u ${USER} -p ${PASS}"
+                    sh "docker push ${REGISTRY}/${IMAGE_NAME}:${TAG}"
+                    sh "docker push ${REGISTRY}/${IMAGE_NAME}:latest"
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            cleanWs()
+        }
+    }
+}
