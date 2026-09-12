@@ -5,7 +5,7 @@ spring:
   application:
     name: student-service
   datasource:
-    url: jdbc:postgresql://${DB_HOST:postgres-service.default.svc.cluster.local}:${DB_PORT:5432}/student_db
+    url: jdbc:postgresql://${DB_HOST:postgres-service.default.svc.cluster.local}:${DB_PORT:5432}/mydb
     username: ${DB_USER:postgres}
     password: ${DB_PASSWORD:postgres}
   jpa:
