@@ -2,8 +2,6 @@ pipeline {
     agent any
 
     environment {
-        JAVA_HOME = '/usr/lib/jvm/java-21-openjdk' 
-        PATH = "${JAVA_HOME}/bin:${env.PATH}"
         REGISTRY = 'ghcr.io/saipappala'
         SERVICE_DIR = 'student-service' // Change to 'studylog-service' for the second pipeline
         IMAGE_NAME = "${SERVICE_DIR}"
@@ -21,7 +19,15 @@ pipeline {
             steps {
                 // Change directory to the service folder before running Maven
                 dir("${SERVICE_DIR}") {
-                    sh './mvnw clean test'
+                //    sh './mvnw clean test'
+                sh '''
+                # Locate Java binary and find its true JDK home
+                export JAVA_HOME=$(readlink -f $(which java) | sed "s:/bin/java::")
+                echo "Detected JAVA_HOME: $JAVA_HOME"
+                export PATH=$JAVA_HOME/bin:$PATH
+                
+                ./mvnw clean test
+            '''
                 }
             }
         }
