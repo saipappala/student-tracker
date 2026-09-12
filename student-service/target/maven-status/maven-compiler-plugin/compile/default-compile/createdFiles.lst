@@ -1,0 +1,3 @@
+com/tracker/student/repository/StudentRepository.class
+com/tracker/student/model/Student.class
+com/tracker/student/controller/StudentController.class
