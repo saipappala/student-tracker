@@ -41,7 +41,7 @@ pipeline {
 
         stage('Push Image to Registry') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'github-container-registry-credentials', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
+                withCredentials([usernamePassword(credentialsId: 'github-pat-credentials', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
                     sh "echo ${PASS} | docker login ghcr.io -u ${USER} --password-stdin"
                     sh "docker push ${REGISTRY}/${IMAGE_NAME}:${TAG}"
                     sh "docker push ${REGISTRY}/${IMAGE_NAME}:latest"
