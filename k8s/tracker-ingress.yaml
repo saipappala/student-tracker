@@ -1,0 +1,38 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tracker-ingress
+  namespace: default
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  ingressClassName: nginx   # Replaces kubernetes.io/ingress.class annotation
+  rules:
+  - http:
+      paths:
+      # 1. Route root path to Frontend UI
+      - path: /()(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: frontend-service
+            port:
+              number: 80
+
+      # 2. Route Student API calls
+      - path: /api/students(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: student-service
+            port:
+              number: 8081
+
+      # 3. Route Study Log API calls
+      - path: /api/logs(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: studylog-service
+            port:
+              number: 8082
