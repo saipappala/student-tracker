@@ -1,0 +1,52 @@
+pipeline {
+    agent any
+
+    environment {
+        REGISTRY = 'ghcr.io'
+        IMAGE_NAME = 'saipappala/frontend'
+        REGISTRY_CREDENTIALS_ID = 'ghcr-credentials' // Name of your Jenkins secret text/credentials for GHCR
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    echo "Building Frontend Docker Image..."
+                    sh "docker build -t ${REGISTRY}/${IMAGE_NAME}:${BUILD_NUMBER} -t ${REGISTRY}/${IMAGE_NAME}:latest ."
+                }
+            }
+        }
+
+        stage('Push to Registry') {
+            steps {
+                script {
+                    echo "Pushing Image to GHCR..."
+                    docker.withRegistry("https://${REGISTRY}", "${REGISTRY_CREDENTIALS_ID}") {
+                        sh "docker push ${REGISTRY}/${IMAGE_NAME}:${BUILD_NUMBER}"
+                        sh "docker push ${REGISTRY}/${IMAGE_NAME}:latest"
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            // Clean up local images after build
+            sh "docker rmi ${REGISTRY}/${IMAGE_NAME}:${BUILD_NUMBER} || true"
+            sh "docker rmi ${REGISTRY}/${IMAGE_NAME}:latest || true"
+        }
+        success {
+            echo "Successfully built and pushed ${REGISTRY}/${IMAGE_NAME}:latest"
+        }
+        failure {
+            echo "Pipeline failed! Please check build logs."
+        }
+    }
+}

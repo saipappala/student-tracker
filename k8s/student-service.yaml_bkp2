@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: student-service
+  labels:
+    app: student-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: student-service
+  template:
+    metadata:
+      labels:
+        app: student-service
+      annotations:
+        # Enable Vault Agent Injector
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/agent-image: "docker.io/hashicorp/vault:2.1.0"
+
+        # Use Kubernetes Auth method (No static AppRole IDs required)
+        vault.hashicorp.com/auth-type: "kubernetes"
+        vault.hashicorp.com/role: "app-role"   # Must match the role name configured in Vault Kubernetes auth
+
+        # Inject secret from Vault path
+        vault.hashicorp.com/agent-inject-secret-database-config: "secret/data/postgres/dev"
+
+        # Format secret output template
+        vault.hashicorp.com/agent-inject-template-database-config: |
+          {{- with secret "secret/data/postgres/dev" -}}
+          export DB_HOST="{{ .Data.data.host }}"
+          export DB_PORT="{{ .Data.data.port }}"
+          export DB_USER="{{ .Data.data.username }}"
+          export DB_PASSWORD="{{ .Data.data.password }}"
+          {{- end -}}
+    spec:
+      containers:
+        - name: student-service
+          image: ghcr.io/saipappala/student-service:latest
+          ports:
+            - containerPort: 8081
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              if [ -f /vault/secrets/database-config ]; then
+                source /vault/secrets/database-config
+              fi
+              java -jar app.jar

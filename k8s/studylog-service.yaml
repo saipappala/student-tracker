@@ -13,27 +13,25 @@ spec:
     metadata:
       labels:
         app: studylog-service
-      annotations:
-        vault.hashicorp.com/agent-inject: "true"
-        vault.hashicorp.com/role: "student-tracker-role"
-        vault.hashicorp.com/agent-inject-secret-database-config: "secret/data/database/credentials"
-        vault.hashicorp.com/agent-inject-template-database-config: |
-          {{- with secret "secret/data/database/credentials" -}}
-          export DB_HOST="{{ .Data.data.host }}"
-          export DB_PORT="{{ .Data.data.port }}"
-          export DB_USER="{{ .Data.data.username }}"
-          export DB_PASSWORD="{{ .Data.data.password }}"
-          {{- end -}}
     spec:
       containers:
         - name: studylog-service
-          image: ghcr.io/YOUR_GITHUB_USERNAME/studylog-service:latest
+          image: ghcr.io/saipappala/studylog-service:latest
           ports:
             - containerPort: 8082
-          command: ["/bin/sh", "-c"]
-          args:
-            - |
-              if [ -f /vault/secrets/database-config ]; then
-                source /vault/secrets/database-config
-              fi
-              java -jar app.jar
+          env:
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: student-db-secret
+                  key: DB_NAME
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: student-db-secret
+                  key: DB_USER
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: student-db-secret
+                  key: DB_PASSWORD
