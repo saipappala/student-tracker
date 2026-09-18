@@ -1,10 +1,11 @@
-pipeline {
+ipipeline {
     agent any
 
     environment {
-        REGISTRY = 'ghcr.io'
-        IMAGE_NAME = 'saipappala/frontend'
-        REGISTRY_CREDENTIALS_ID = 'ghcr-credentials' // Name of your Jenkins secret text/credentials for GHCR
+        REGISTRY = 'ghcr.io/saipappala'
+        SERVICE_DIR = 'frontend'
+        IMAGE_NAME = "${SERVICE_DIR}"
+        TAG = "${BUILD_NUMBER}"
     }
 
     stages {
@@ -14,23 +15,32 @@ pipeline {
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Compile & Test') {
             steps {
-                script {
-                    echo "Building Frontend Docker Image..."
-                    sh "docker build -t ${REGISTRY}/${IMAGE_NAME}:${BUILD_NUMBER} -t ${REGISTRY}/${IMAGE_NAME}:latest ."
+                // Change directory to the service folder before building/testing web assets
+                dir("${SERVICE_DIR}") {
+                    sh '''
+                        echo "Validating frontend assets in ${SERVICE_DIR}..."
+                        # If using Node/npm package build, uncomment below:
+                        # npm install && npm test
+                    '''
                 }
             }
         }
 
-        stage('Push to Registry') {
+        stage('Build Docker Image') {
             steps {
-                script {
-                    echo "Pushing Image to GHCR..."
-                    docker.withRegistry("https://${REGISTRY}", "${REGISTRY_CREDENTIALS_ID}") {
-                        sh "docker push ${REGISTRY}/${IMAGE_NAME}:${BUILD_NUMBER}"
-                        sh "docker push ${REGISTRY}/${IMAGE_NAME}:latest"
-                    }
+                // Point docker build directly to the Dockerfile and context path inside the service folder
+                sh "docker build -t ${REGISTRY}/${IMAGE_NAME}:${TAG} -t ${REGISTRY}/${IMAGE_NAME}:latest ./${SERVICE_DIR}"
+            }
+        }
+
+        stage('Push Image to Registry') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'github-pat-credentials', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
+                    sh "echo ${PASS} | docker login ghcr.io -u ${USER} --password-stdin"
+                    sh "docker push ${REGISTRY}/${IMAGE_NAME}:${TAG}"
+                    sh "docker push ${REGISTRY}/${IMAGE_NAME}:latest"
                 }
             }
         }
@@ -38,15 +48,7 @@ pipeline {
 
     post {
         always {
-            // Clean up local images after build
-            sh "docker rmi ${REGISTRY}/${IMAGE_NAME}:${BUILD_NUMBER} || true"
-            sh "docker rmi ${REGISTRY}/${IMAGE_NAME}:latest || true"
-        }
-        success {
-            echo "Successfully built and pushed ${REGISTRY}/${IMAGE_NAME}:latest"
-        }
-        failure {
-            echo "Pipeline failed! Please check build logs."
+            cleanWs()
         }
     }
 }
